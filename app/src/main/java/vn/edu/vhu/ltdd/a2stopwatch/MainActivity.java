@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     // TODO: thay 2201234567 bằng MSSV của bạn
 
-    private static final String TAG = "A2_2201234567";
+    private static final String TAG = "A2_231A010603";
 
 
 
