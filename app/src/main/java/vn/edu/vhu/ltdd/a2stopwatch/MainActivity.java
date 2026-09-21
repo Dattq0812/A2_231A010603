@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -25,17 +26,21 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_ACCUMULATED = "accumulated";
     private static final String KEY_START = "start";
     private static final String KEY_RECREATE = "recreate";
-    private static final String KEY_LAPS = "laps"; // Key để lưu danh sách vòng (NC1)
+    private static final String KEY_LAPS = "laps";
+
+    // Khóa để lưu trạng thái CheckBox (NC2)
+    private static final String KEY_STOP_ON_BG = "stop_on_bg";
 
     private TextView tvTime, tvStatus, tvRecreate, tvLaps;
     private Button btnStartPause, btnReset, btnLap;
+
+    // Khai báo CheckBox (NC2)
+    private CheckBox cbStopOnBackground;
 
     private boolean running = false;
     private long accumulated = 0L;
     private long startTime = 0L;
     private int recreateCount = 0;
-
-    // Biến lưu trữ danh sách các vòng đếm (NC1)
     private ArrayList<String> lapList = new ArrayList<>();
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -62,11 +67,14 @@ public class MainActivity extends AppCompatActivity {
         tvTime = findViewById(R.id.tvTime);
         tvStatus = findViewById(R.id.tvStatus);
         tvRecreate = findViewById(R.id.tvRecreate);
-        tvLaps = findViewById(R.id.tvLaps); // Ánh xạ TextView hiển thị danh sách Vòng
+        tvLaps = findViewById(R.id.tvLaps);
 
         btnStartPause = findViewById(R.id.btnStartPause);
         btnReset = findViewById(R.id.btnReset);
-        btnLap = findViewById(R.id.btnLap); // Ánh xạ nút Vòng
+        btnLap = findViewById(R.id.btnLap);
+
+        // Ánh xạ CheckBox từ giao diện (NC2)
+        cbStopOnBackground = findViewById(R.id.cbStopOnBackground);
 
         if (savedInstanceState != null) {
             running = savedInstanceState.getBoolean(KEY_RUNNING);
@@ -74,9 +82,12 @@ public class MainActivity extends AppCompatActivity {
             startTime = savedInstanceState.getLong(KEY_START);
             recreateCount = savedInstanceState.getInt(KEY_RECREATE) + 1;
 
-            // Khôi phục danh sách Vòng (NC1)
             lapList = savedInstanceState.getStringArrayList(KEY_LAPS);
             if (lapList == null) lapList = new ArrayList<>();
+
+            // Khôi phục trạng thái đánh dấu của CheckBox (NC2)
+            boolean isStopOnBgChecked = savedInstanceState.getBoolean(KEY_STOP_ON_BG, false);
+            cbStopOnBackground.setChecked(isStopOnBgChecked);
 
             Log.d(TAG, "onCreate: KHÔI PHỤC trạng thái, running=" + running);
         }
@@ -88,9 +99,8 @@ public class MainActivity extends AppCompatActivity {
 
         btnReset.setOnClickListener(v -> resetStopwatch());
 
-        // Xử lý sự kiện bấm nút Vòng (NC1)
         btnLap.setOnClickListener(v -> {
-            if (running) { // Chỉ cho phép ghi vòng khi đồng hồ đang chạy
+            if (running) {
                 String currentTime = tvTime.getText().toString();
                 String lapRecord = "Vòng " + (lapList.size() + 1) + ": " + currentTime;
                 lapList.add(lapRecord);
@@ -100,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         updateUi();
-        updateLapUi(); // Hiển thị danh sách vòng khi mở app (hoặc sau khi xoay màn hình)
+        updateLapUi();
     }
 
     private long elapsed() {
@@ -125,7 +135,7 @@ public class MainActivity extends AppCompatActivity {
         running = false;
         accumulated = 0L;
         startTime = 0L;
-        lapList.clear(); // Xóa danh sách vòng (NC1)
+        lapList.clear();
         stopTicking();
         updateUi();
         updateLapUi();
@@ -153,15 +163,12 @@ public class MainActivity extends AppCompatActivity {
         btnStartPause.setText(running ? R.string.pause : R.string.start);
         tvStatus.setText(running ? R.string.status_running : R.string.status_paused);
         tvRecreate.setText(getString(R.string.recreate_count, recreateCount));
-
-        // Vô hiệu hóa nút Vòng nếu đồng hồ đang dừng
         btnLap.setEnabled(running);
     }
 
-    // Hàm cập nhật danh sách hiển thị các vòng (NC1)
     private void updateLapUi() {
         StringBuilder sb = new StringBuilder();
-        for (int i = lapList.size() - 1; i >= 0; i--) { // Hiển thị vòng mới nhất lên đầu
+        for (int i = lapList.size() - 1; i >= 0; i--) {
             sb.append(lapList.get(i)).append("\n");
         }
         tvLaps.setText(sb.toString());
@@ -183,8 +190,18 @@ public class MainActivity extends AppCompatActivity {
         stopTicking();
     }
 
+    // --- XỬ LÝ SỰ KIỆN NC2 ---
     @Override
-    protected void onStop() { super.onStop(); }
+    protected void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop");
+
+        // Kiểm tra xem CheckBox có đang được tick và đồng hồ có đang chạy không (NC2)
+        if (cbStopOnBackground.isChecked() && running) {
+            pauseStopwatch();
+            Log.i(TAG, "NC2: Đồng hồ tự động tạm dừng vì ứng dụng ra nền.");
+        }
+    }
 
     @Override
     protected void onDestroy() {
@@ -199,9 +216,10 @@ public class MainActivity extends AppCompatActivity {
         outState.putLong(KEY_ACCUMULATED, accumulated);
         outState.putLong(KEY_START, startTime);
         outState.putInt(KEY_RECREATE, recreateCount);
-
-        // Lưu danh sách Vòng vào Bundle trước khi Activity bị hủy (NC1)
         outState.putStringArrayList(KEY_LAPS, lapList);
+
+        // Lưu trạng thái của CheckBox vào Bundle để duy trì khi xoay màn hình (NC2)
+        outState.putBoolean(KEY_STOP_ON_BG, cbStopOnBackground.isChecked());
     }
 
     @Override

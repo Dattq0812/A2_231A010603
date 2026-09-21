@@ -68,6 +68,14 @@
             android:layout_weight="1"
             android:text="@string/reset" />
     </LinearLayout>
+    <!-- Thêm CheckBox cho tính năng NC2 -->
+    <CheckBox
+        android:id="@+id/cbStopOnBackground"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Dừng khi ra nền"
+        android:textSize="16sp" />
 
     <TextView
         android:id="@+id/tvRecreate"
@@ -75,6 +83,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:textSize="14sp" />
+
 
     <!-- Khu vực hiển thị danh sách Vòng (NC1) -->
     <ScrollView
